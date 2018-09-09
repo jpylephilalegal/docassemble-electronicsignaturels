@@ -1,0 +1,9 @@
+*~
+*.pyc
+en
+*/auto
+build
+*.egg-info
+dist
+pypi-publish.sh
+newversion.sh

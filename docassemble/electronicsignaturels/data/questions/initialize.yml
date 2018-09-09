@@ -1,0 +1,42 @@
+modules:
+  - docassemble.base.util
+  - docassemble.electronicsignaturels.functions
+---
+objects:
+  - ls: DAObject
+---
+mandatory: True
+code: |
+  multi_user = True
+  ls
+---
+code: |
+  dummy_data_file = 'docassemble.electronicsignaturels:data/sources/dummy_data.yml'
+---
+mandatory: use_fake_data
+scan for variables: False
+code: |
+  ls.dict = objects_from_file(dummy_data_file)
+  for key, val in ls.dict.iteritems():
+    if val is not None and val != '':
+      setattr(ls, key, val)
+  mark_task_as_performed('initialization')
+---
+initial: True
+code: |
+  if not task_performed('initialization'):
+    kick_out_user
+---
+event: kick_out_user
+question: |
+  Sorry, you have clicked on an invalid link.
+---
+event: initialize
+code: |
+  ls.dict = dict()
+  for key, val in action_arguments().iteritems():
+    if val is not None and val != '':
+      setattr(ls, key, val)
+    ls.dict[key] = val
+  mark_task_as_performed('initialization')
+  json_response(dict(url=short_url()))

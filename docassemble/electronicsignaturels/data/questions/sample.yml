@@ -1,0 +1,272 @@
+# This sets the title of the interview in the navigation bar for
+# desktop and mobile.  The "authors" and "revision_date" are optional.
+metadata:
+  title: Citizenship attestation
+  short title: Sign
+  prefix: ca
+  authors:
+    - name: Jonathan Pyle
+      organization: Philadelphia Legal Assistance
+      email: jpyle@philalegal.org
+  revision_date: 2018-09-07
+---
+# This sets up the interface with Legal Server.
+include:
+  - docassemble.electronicsignaturels:initialize.yml
+---
+code: |
+  # Set debug_mode to True if you want to see what information came
+  # over from Legal Server.
+  debug_mode = False
+  # Set use_fake_data to True if you have not yet gotten the integration
+  # with Legal Server to work, but you want to test the guided interview.
+  use_fake_data = True
+---
+mandatory: debug_mode
+question: |
+  Information obtained from Legal Server
+subquestion: |
+  % if use_fake_data:
+  Actually, this is fake data, but this is an example of what the information
+  might be.
+  % endif
+  % for key, val in ls.dict.iteritems():
+  `${ key }` is `${ val }`.
+  
+  % endfor
+field: test_results_seen
+---
+mandatory: True
+code: |
+  intro_screen
+  name_confirmed
+  if client_is_citizen:
+    if client_agrees_to_sign:
+      document_emailed_to_user
+      document_submitted
+      if client_wants_a_copy:
+        document_emailed_to_client
+    else:
+      client_given_blank_citizenship_attestation
+      show_information_about_mailing
+  else:
+    if client_agrees_to_upload:
+      document_emailed_to_user
+      document_submitted
+      if client_wants_a_copy:
+        document_emailed_to_client
+    else:
+      show_information_about_mailing
+  goodbye_screen
+---
+question: |
+  About this web site
+subquestion: |
+  The federal government is the largest funder of Philadelphia Legal
+  Assistance (PLA), and the government imposes a number of
+  requirements on PLA.  One of these requirements is that PLA obtain
+  documentation that all of its clients are either citizens, permanent
+  residents, refugees, asylees, or persons in the process of becoming
+  permanent residents.  Some exceptions apply.
+
+  If you are a citizen, we need a signed document from you, called a
+  "Citizenship Attestation," in which you say that you are a citizen.
+  If you are an immigrant, we do not need your signature, but we need
+  a copy of your immigration documentation.
+
+  This web site allows you to sign a Citizenship Attestation or upload
+  a copy (or a photograph) of your immigration documentation.  If you
+  are not able to submit the documentation using this web site, you
+  can submit it by mail, fax, or in person.  Please contact
+  ${ ls.sidebar_advocate } at PLA to make arrangements to provide the
+  documentation by one of these methods.
+field: intro_screen
+---
+question: |
+  Are you a citizen of the United States?
+subquestion: |
+  If you are not a citizen, say No here.  We can still assist you if
+  you are not a citizen; we will just need to get some other
+  documentation from you.
+yesno: client_is_citizen
+---
+question: |
+  Do you agree to sign a form stating that you are a citizen of the United States?
+yesno: client_agrees_to_sign
+---
+question: |
+  Thank you!
+subquestion: |
+  Your ${ form_type } has been submitted to PLA.
+
+  You can [download it here](${ the_document.url_for() }).
+  
+  Do you want a copy of the ${ form_type } to be
+  e-mailed to you?
+yesno: client_wants_a_copy
+prevent going back: True
+---
+field: client_understands_how_to_use_signature_feature
+question: Instructions for signing your name
+subquestion: |
+  On the next screen, you will see a box in which you can sign your
+  name using your mouse, track pad, or touch screen.  If you make a
+  mistake, you can press "Clear" and try again.  For best results, try
+  signing your name *slowly*.
+---
+template: client_signature
+content: ''
+---
+if: |
+  client_agrees_to_sign and client_understands_how_to_use_signature_feature
+question: |
+  Sign your name
+signature: client_signature
+under: |
+  ${ ls.name }
+---
+question: |
+  Is your name ${ ls.name }?
+yesno: name_is_correct
+---
+question: |
+  % if defined('ls.name'):
+  Please confirm the spelling of your name.
+  % else:
+  What is your full name?
+  % endif
+fields:
+  - Name: ls.name
+continue button field: name_confirmed
+---
+code: |
+  if client_is_citizen:
+    form_type = 'Citizenship Attestation'
+  else:
+    form_type = 'immigration documentation'
+---
+code: |
+  if client_is_citizen:
+    the_document = citizenship_attestation.pdf
+  else:
+    the_document = pdf_concatenate(immigration_documentation, filename="imm_docs_" + space_to_underscore(ls.name) + ".pdf")
+---
+question: |
+  Are you able to upload your immigration documentation?
+subquestion: |
+  Say yes if:
+  
+    * You are using a mobile phone or tablet that has a camera, and
+      you have access to your immigration documentation right now; or
+    
+    * You have a scanned copy of your documentation accessible from
+      the computer or device you are using right now.
+yesno: client_agrees_to_upload
+---
+question: |
+  Please upload your immigration documentation.
+fields:
+  - Document: immigration_documentation
+    datatype: files
+help: |
+  If you are using a mobile phone, you can take pictures of your
+  immigration documents.  You can select more than one image or file.
+---
+event: show_information_about_mailing
+question: |
+  Please send us your ${ form_type }.
+subquestion: |
+  There are several ways you can provide us with a copy of your
+  ${ form_type }:
+
+    *   You can come to our office and we can make a copy of it;
+    *   You can fax a copy of it to 215-981-3870; or
+    *   You can mail a copy of it to us.
+  
+  If you want to mail your ${ form_type}, this is the address you
+  should use:
+
+  ${ ls.sidebar_primary_assignment } [BR]
+  718 Arch Street [BR]
+  Philadelphia, PA 19106
+    
+  Our phone number is 215-981-3800.
+buttons:
+  - Exit: exit
+---
+attachment:
+  filename: |
+    ${ "ca_" + space_to_underscore(ls.name) }
+  docx template file: citizenship_attestation.docx
+  variable name: citizenship_attestation
+---
+question: |
+  Signing your citizenship attestation on paper
+subquestion: |
+  If you would prefer to sign your Citizenship Attestation on paper,
+  you can
+  [download it here](${ citizenship_attestation.pdf.url_for()}).
+
+  When you have downloaded the Citizenship Attestation, press
+  **Continue**.
+field: client_given_blank_citizenship_attestation
+---
+template: email_to_client
+subject: |
+  Copy of the ${ form_type } you submitted to Philadelphia Legal Assistance.
+content: |
+  Attached is the ${ form_type } you submitted to Philadelphia Legal Assistance today.
+---
+template: email_to_case
+subject: |
+  ${ capitalize(form_type) } for ${ ls.name }
+content: |
+  ${ ls.name } submitted this ${ form_type } on-line.
+---
+template: email_to_user
+subject: |
+  ${ capitalize(form_type) } for ${ ls.name }
+content: |
+  ${ ls.name } submitted this ${ form_type } on-line.
+---
+question: |
+  % if defined('ls.email'):
+  Please confirm your e-mail address.
+  % else:
+  What is your e-mail address?
+  % endif
+fields:
+  - E-mail: ls.email
+    datatype: email
+continue button field: email_confirmed
+---
+event: goodbye_screen
+question: |
+  Thank you for submitting your ${ form_type }.
+subquestion: |
+  % if client_wants_a_copy:
+  A copy of your ${ form_type } has been e-mailed to you at
+  ${ ls.email }
+  % endif
+buttons:
+  - Exit: exit
+prevent going back: True
+---
+code: |
+  send_email(to=ls.case_email, template=email_to_case, attachments=the_document)
+  document_emailed_to_user = True
+---
+code: |
+  send_email(to=ls.initiating_user_email_address, template=email_to_user, attachments=the_document)
+  document_submitted = True
+---
+code: |
+  email_confirmed
+  send_email(to=form_email_address(ls.name, ls.email), template=email_to_client, attachments=the_document)
+  document_emailed_to_client = True
+---
+# People will see this screen if they try to visit the URL of the
+# interview without using a link generated from Legal Server.
+question: |
+  Sorry, you have clicked on an invalid link.
+event: kick_out_user
